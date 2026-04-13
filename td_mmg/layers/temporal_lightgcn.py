@@ -33,7 +33,7 @@ class TemporalLightGCNLayer(nn.Module):
             
             # 为每种边类型计算时间衰减权重
             for etype in ['user_item', 'r.user_item']:
-                if etype in g.canonical_etypes:
+                if etype in g.etypes:
                     # 计算时间衰减
                     time_decay = torch.exp(-lam * g.edges[etype].data['dt'])
                     # 计算最终的消息传递权重

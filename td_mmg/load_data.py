@@ -206,27 +206,36 @@ def build_hetero_graph(user_item_edges, num_users, num_items, dt_norm=None):
     g = dgl_add_all_reversed_edges(g)
 
     # 计算度数归一化系数
-    # 计算用户度数
-    user_deg = g.in_degrees(etype="user_item").float()
-    # 计算物品度数
-    item_deg = g.in_degrees(etype="r.user_item").float()
+    # 计算用户度数 (出度，返回大小为 num_users)
+    user_deg = g.out_degrees(etype='user_item').float()
+    # 计算物品度数 (入度，返回大小为 num_items)
+    item_deg = g.in_degrees(etype='user_item').float()
     
-    # 计算1/sqrt(d_u d_i)
-    src, dst = g.edges(etype="user_item")
+    # 防止除以 0，截断最小值为 1.0
+    user_deg = torch.clamp(user_deg, min=1.0)
+    item_deg = torch.clamp(item_deg, min=1.0)
+    
+    # 计算 1 / sqrt(d_u * d_i)
+    src, dst = g.edges(etype='user_item')
     norm = 1.0 / torch.sqrt(user_deg[src] * item_deg[dst])
-    norm = norm.unsqueeze(1)  # 增加维度，以便广播
+    norm = norm.unsqueeze(1)  # 增加维度以便后续广播
     
     # 为User-Item边添加度数归一化系数
     g.edges["user_item"].data["norm"] = norm
     # 为反向边添加相同的度数归一化系数
     g.edges["r.user_item"].data["norm"] = norm
     
-    # 如果dt_norm不为空，添加时间差特征
+    # 添加时间差特征
     if dt_norm is not None:
         dt_tensor = torch.tensor(dt_norm, dtype=torch.float32).unsqueeze(1)
-        g.edges["user_item"].data["dt"] = dt_tensor
-        # 为反向边添加相同的时间差特征
-        g.edges["r.user_item"].data["dt"] = dt_tensor
+    else:
+        # 验证集和测试集的时间差默认为0
+        dt_tensor = torch.zeros((g.num_edges(etype="user_item"), 1), dtype=torch.float32)
+    
+    # 为User-Item边添加时间差特征
+    g.edges["user_item"].data["dt"] = dt_tensor
+    # 为反向边添加相同的时间差特征
+    g.edges["r.user_item"].data["dt"] = dt_tensor
 
     return g
 

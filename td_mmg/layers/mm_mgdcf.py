@@ -80,11 +80,8 @@ class MMMGDCF(nn.Module):
         
         super().__init__()
 
-        # self.emb_mgdcf = MGDCF(4, alpha, beta, 0.0, edge_drop_rate, z_drop_rate)
-        # self.t_mgdcf = MGDCF(k, alpha, beta, 0.0, edge_drop_rate, z_drop_rate)
-        # self.v_mgdcf = MGDCF(3, alpha, beta, 0.0, edge_drop_rate, z_drop_rate)
-
- 
+        # 保存层数参数
+        self.k_e = k_e
 
         # 替换为时序衰减图卷积层
         # 先只用一层进行实验验证
@@ -184,10 +181,26 @@ class MMMGDCF(nn.Module):
                 'user': self.user_gnn_input_dropout(user_h),
                 'item': torch.zeros_like(encoded_t) if item_embeddings is None else self.item_gnn_input_dropout(item_embeddings)
             }
-            # 调用新的时序衰减图卷积层
-            emb_h_dict = self.emb_mgdcf(g, h_dict)
+            
+            # 初始化特征累加器，包含第0层（原始特征）
+            emb_h_dict_sum = {}
+            for key in h_dict:
+                emb_h_dict_sum[key] = h_dict[key].clone()
+            
+            # 多层前向传播
+            current_h_dict = h_dict
+            for _ in range(self.k_e):
+                current_h_dict = self.emb_mgdcf(g, current_h_dict)
+                # 累加每一层的特征
+                for key in current_h_dict:
+                    emb_h_dict_sum[key] += current_h_dict[key]
+            
+            # 计算均值（LightGCN的Readout机制）
+            for key in emb_h_dict_sum:
+                emb_h_dict_sum[key] /= (self.k_e + 1)
+            
             # 将字典转换为拼接的张量
-            emb_h = torch.cat([emb_h_dict['user'], emb_h_dict['item']], dim=0)
+            emb_h = torch.cat([emb_h_dict_sum['user'], emb_h_dict_sum['item']], dim=0)
         else:
             emb_h = None
 
