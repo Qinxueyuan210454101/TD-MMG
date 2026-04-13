@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="xfusion@210.32.96.151:59222 password (3)" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
+    <option name="confirmBeforeUploading" value="false" />
+    <serverData>
+      <paths name="Server_GPU">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/data1/qinxueyuan/MIG-GT" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="xfusion@210.32.96.151:59222 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/pycharm_project_848" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="xfusion@210.32.96.151:59222 password (2)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/data1/qinxueyuan/MIG-GT" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="xfusion@210.32.96.151:59222 password (3)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/data1/qinxueyuan/MIG-GT" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>
