@@ -19,7 +19,13 @@ from td_mmg.vector_search.vector_search import VectorSearchEngine
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='baby', help='name of datasets')
-parser.add_argument('--method', type=str)
+parser.add_argument(
+    '--method',
+    type=str,
+    default='mig',
+    choices=['mig', 'td_mmg'],
+    help="training method: 'mig' (MMMGDCF) or 'td_mmg' (TDMMG)",
+)
 parser.add_argument('--result_dir', type=str)
 parser.add_argument('--seed', type=int)
 parser.add_argument('--gpu', type=str)
@@ -34,7 +40,9 @@ config = combine_args_into_config(config, args)
 
 print(config)
 
-os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+# os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+if args.gpu is not None:
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
 
 from td_mmg.utils.random_utils import reset_seed 
@@ -76,6 +84,8 @@ run_id = shortuuid.uuid()
 
 result_dir = args.result_dir
 
+if result_dir is None:
+    result_dir = "./results"
 if not os.path.exists(result_dir):
     os.makedirs(result_dir)
 
@@ -172,6 +182,10 @@ elif method == "td_mmg":
         num_clusters=config.num_clusters,
         num_samples=config.num_samples
     ).to(device)
+else:
+    raise ValueError(
+        f"Unknown --method {method!r}. Expected one of: 'mig', 'td_mmg'."
+    )
 
 
 use_clip_loss = False
@@ -238,7 +252,6 @@ train_edges_data_loader = create_tensors_dataloader(
         torch.arange(len(train_user_item_edges)),
         torch.tensor(train_user_item_edges), batch_size=config.batch_size, shuffle=True
 )
-
 
 optimizer = torch.optim.Adam([user_embeddings, item_embeddings] + list(model.parameters()), lr=config.lr)
 

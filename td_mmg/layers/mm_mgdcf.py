@@ -176,31 +176,23 @@ class MMMGDCF(nn.Module):
         user_h = user_embeddings
 
         if self.emb_mgdcf is not None:
-            # 构建节点特征字典
-            h_dict = {
-                'user': self.user_gnn_input_dropout(user_h),
-                'item': torch.zeros_like(encoded_t) if item_embeddings is None else self.item_gnn_input_dropout(item_embeddings)
-            }
-            
-            # 初始化特征累加器，包含第0层（原始特征）
-            emb_h_dict_sum = {}
-            for key in h_dict:
-                emb_h_dict_sum[key] = h_dict[key].clone()
-            
-            # 多层前向传播
-            current_h_dict = h_dict
+            # 当前训练脚本构建的是同构图（num_users + num_items 个节点），因此这里用拼接后的 tensor 做 LightGCN
+            user_x = self.user_gnn_input_dropout(user_h)
+            item_x = (
+                torch.zeros_like(encoded_t)
+                if item_embeddings is None
+                else self.item_gnn_input_dropout(item_embeddings)
+            )
+
+            h0 = torch.cat([user_x, item_x], dim=0)
+            h_sum = h0.clone()
+            h = h0
+
             for _ in range(self.k_e):
-                current_h_dict = self.emb_mgdcf(g, current_h_dict)
-                # 累加每一层的特征
-                for key in current_h_dict:
-                    emb_h_dict_sum[key] += current_h_dict[key]
-            
-            # 计算均值（LightGCN的Readout机制）
-            for key in emb_h_dict_sum:
-                emb_h_dict_sum[key] /= (self.k_e + 1)
-            
-            # 将字典转换为拼接的张量
-            emb_h = torch.cat([emb_h_dict_sum['user'], emb_h_dict_sum['item']], dim=0)
+                h = self.emb_mgdcf(g, h)
+                h_sum = h_sum + h
+
+            emb_h = h_sum / (self.k_e + 1)
         else:
             emb_h = None
 

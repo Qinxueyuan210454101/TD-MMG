@@ -14,11 +14,13 @@ def reset_seed(seed):
    
 
 
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
+    # torch.manual_seed(seed)
+    if seed is not None:
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
 
-    dgl.seed(seed)
+        dgl.seed(seed)
 
 
 

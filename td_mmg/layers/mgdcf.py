@@ -98,8 +98,13 @@ class MGDCF(nn.Module):
         num_user_item_edges = len(src)
 
         # 添加反向边（物品-用户）
-        src = torch.concat([src, dst], dim=0)
-        dst = torch.concat([dst, src], dim=0)
+        # src = torch.concat([src, dst], dim=0)
+        # dst = torch.concat([dst, src], dim=0)
+        reverse_src = dst.clone()
+        reverse_dst = src.clone()
+        src = torch.concat([src, reverse_src], dim=0)
+        dst = torch.concat([dst, reverse_dst], dim=0)
+
 
         # 添加自环边
         src = torch.concat([src, torch.arange(num_homo_nodes)], dim=0)
