@@ -298,10 +298,20 @@ for epoch in range(1, config.num_epochs + 1):
 
             # infobpr = bpr by default
             mf_losses = compute_info_bpr_loss(user_h, item_h, batch_edges, num_negs=config.num_negs, reduction="none")
-        
-            l2_loss = compute_l2_loss([user_h, item_h])
 
-            loss = mf_losses.sum() + l2_loss * config.l2_coef
+            # Main loss: use mean to keep scale independent of batch_size
+            mf_loss = mf_losses.mean()
+
+            # L2 regularization must be applied on the 0-th layer ID embeddings (not propagated user_h/item_h),
+            # and only on the rows involved in current batch to avoid a massive full-graph penalty.
+            batch_user_idx = torch.unique(batch_edges[:, 0])
+            batch_item_idx = torch.unique(batch_edges[:, 1])
+            l2_loss = compute_l2_loss([
+                user_embeddings[batch_user_idx],
+                item_embeddings[batch_item_idx],
+            ])
+
+            loss = mf_loss + l2_loss * config.l2_coef
 
 
 
@@ -310,8 +320,13 @@ for epoch in range(1, config.num_epochs + 1):
                 pos_user_h = user_h[batch_edges[:, 0]]
                 pos_z_memory_h = z_memory_h[batch_edges[:, 1] + num_users]  
                 unsmooth_logits = (pos_user_h.unsqueeze(1) @ pos_z_memory_h.permute(0, 2, 1)).squeeze(1)
-                unsmooth_loss = F.cross_entropy(unsmooth_logits, torch.zeros([batch_edges.size(0)], dtype=torch.long, device=device), reduction="none").sum()
-                loss = loss + unsmooth_loss
+                unsmooth_loss = F.cross_entropy(
+                    unsmooth_logits,
+                    torch.zeros([batch_edges.size(0)], dtype=torch.long, device=device),
+                    reduction="none",
+                ).mean()
+                unsmooth_coef = float(getattr(config, "unsmooth_coef", 0.1))
+                loss = loss + unsmooth_coef * unsmooth_loss
 
 
             optimizer.zero_grad()
@@ -328,7 +343,7 @@ for epoch in range(1, config.num_epochs + 1):
   
 
     print("epoch = {}\tloss = {:.4f}\tmf_loss = {:.4f}\tl2_loss = {:.4f}\tupdated_lr = {:.4f}\tepoch_time = {:.4f}s\tpcount = {}"
-          .format(epoch, loss.item(), mf_losses.mean().item(), l2_loss.item(), optimizer.param_groups[0]['lr'], epoch_end_time-epoch_start_time, patience_count))
+          .format(epoch, loss.item(), mf_loss.item(), l2_loss.item(), optimizer.param_groups[0]['lr'], epoch_end_time-epoch_start_time, patience_count))
     
 
     if epoch % config.validation_freq == 0:
